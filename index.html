@@ -1,0 +1,939 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Painel de Investimentos</title>
+<style>
+/* layout: single scrolling column of cards — hero stats, meta mensal, graficos, carteira por classe, ativos, aportes */
+:root{
+  --bg:#f2f3ee;
+  --surface:#ffffff;
+  --surface-2:#e9ebe3;
+  --ink:#14140f;
+  --ink-soft:#55564c;
+  --muted:#8d8f83;
+  --border:rgba(20,20,15,0.12);
+  --accent:#0f6a55;
+  --accent-soft:#d9ece6;
+  --danger:#c8393a;
+  --danger-soft:#f6dede;
+  --good:#0ca30c;
+  --good-soft:#dcf1dc;
+  --font-display:'Fraunces',Georgia,'Times New Roman',serif;
+  --font-body:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --c-rf:#2a78d6; --c-cripto:#eb6834; --c-brasil:#008300; --c-global:#4a3aa7; --c-fii:#1baf7a; --c-commod:#eda100;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#141410;
+    --surface:#1c1c17;
+    --surface-2:#242419;
+    --ink:#f5f5ef;
+    --ink-soft:#c7c8bd;
+    --muted:#93948a;
+    --border:rgba(255,255,255,0.12);
+    --accent:#3bb999;
+    --accent-soft:rgba(59,185,153,0.16);
+    --danger:#e37070;
+    --danger-soft:rgba(227,112,112,0.16);
+    --good:#3bc23b;
+    --good-soft:rgba(60,194,59,0.16);
+    --c-rf:#3987e5; --c-cripto:#d95926; --c-brasil:#2fae2f; --c-global:#9085e9; --c-fii:#199e70; --c-commod:#c98500;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#141410;
+  --surface:#1c1c17;
+  --surface-2:#242419;
+  --ink:#f5f5ef;
+  --ink-soft:#c7c8bd;
+  --muted:#93948a;
+  --border:rgba(255,255,255,0.12);
+  --accent:#3bb999;
+  --accent-soft:rgba(59,185,153,0.16);
+  --danger:#e37070;
+  --danger-soft:rgba(227,112,112,0.16);
+  --good:#3bc23b;
+  --good-soft:rgba(60,194,59,0.16);
+  --c-rf:#3987e5; --c-cripto:#d95926; --c-brasil:#2fae2f; --c-global:#9085e9; --c-fii:#199e70; --c-commod:#c98500;
+}
+*{box-sizing:border-box;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  padding-inline:16px;
+  padding-block:28px;
+}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px;}
+
+h1,h2,h3{font-family:var(--font-display);font-weight:600;text-wrap:balance;margin:0;}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);}
+
+/* hero stats */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;min-width:0;}
+.stat-card .eyebrow{margin-bottom:6px;}
+.stat-card .value{font-family:var(--font-mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stat-card .sub{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums;}
+.stat-card .sub.pos{color:var(--good);}
+.stat-card .sub.neg{color:var(--danger);}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;}
+.card h2{font-size:16px;margin-bottom:2px;}
+.card .hint{font-size:12px;color:var(--muted);margin:0 0 14px;}
+
+/* meta mensal */
+.goal-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+.goal-head .amt{font-family:var(--font-mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;}
+.goal-head .target{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.goal-track{height:10px;border-radius:6px;background:var(--surface-2);overflow:hidden;}
+.goal-fill{height:100%;border-radius:6px;background:var(--accent);}
+.goal-fill.met{background:var(--good);}
+.goal-note{font-size:12px;color:var(--muted);margin-top:8px;}
+
+/* form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.field.span-2{grid-column:1 / -1;}
+.field label{font-size:12px;font-weight:600;color:var(--ink-soft);}
+.field select,.field input{
+  font-family:var(--font-body);font-size:14px;color:var(--ink);
+  background:var(--surface-2);border:1px solid var(--border);border-radius:9px;
+  padding:9px 10px;width:100%;
+}
+.field input[type="text"],.field input[type="number"]{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+.field select:focus,.field input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+.form-actions{margin-top:14px;display:flex;justify-content:flex-end;gap:8px;}
+button{font-family:var(--font-body);font-weight:600;font-size:13px;border-radius:9px;border:1px solid transparent;padding:9px 16px;cursor:pointer;}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{filter:brightness(1.06);}
+.btn-ghost{background:transparent;border-color:var(--border);color:var(--ink-soft);}
+.btn-ghost:hover{background:var(--surface-2);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger-text{background:transparent;border:none;color:var(--danger);font-size:12px;padding:4px 6px;}
+.btn-text{background:transparent;border:none;color:var(--accent);font-size:12px;padding:4px 6px;}
+.error-msg{color:var(--danger);font-size:12px;min-height:16px;margin-top:8px;}
+.aux-note{font-size:11.5px;color:var(--muted);margin-top:4px;}
+
+/* charts */
+.chart-empty{font-size:13px;color:var(--muted);padding:20px 0;text-align:center;}
+.bars-svg,.area-svg{width:100%;height:auto;display:block;}
+.bars-svg text,.area-svg text{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+
+/* donut + legend */
+.donut-row{display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
+.donut-wrap{flex-shrink:0;width:160px;height:160px;}
+.class-legend{flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px;}
+.class-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);}
+.class-row:first-child{border-top:none;}
+.dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+.class-row .name{flex:1;font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.class-row .nums{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink-soft);text-align:right;white-space:nowrap;}
+
+/* asset list */
+.class-group{margin-top:18px;}
+.class-group:first-child{margin-top:0;}
+.class-group-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:6px;}
+.asset-row{border-top:1px solid var(--border);padding:12px 0;}
+.asset-row:first-child{border-top:none;}
+.asset-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+.asset-main{min-width:0;}
+.asset-name{font-size:14px;font-weight:700;}
+.asset-code{font-size:11.5px;color:var(--muted);font-weight:500;}
+.asset-meta{font-size:12px;color:var(--ink-soft);margin-top:3px;font-variant-numeric:tabular-nums;}
+.asset-vals{text-align:right;flex-shrink:0;}
+.asset-vals .atual{font-family:var(--font-mono);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums;}
+.asset-vals .result{font-family:var(--font-mono);font-size:12px;font-variant-numeric:tabular-nums;margin-top:2px;}
+.asset-vals .result.pos{color:var(--good);}
+.asset-vals .result.neg{color:var(--danger);}
+.asset-actions{display:flex;gap:4px;margin-top:8px;}
+.confirm-row{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12.5px;color:var(--danger);flex-wrap:wrap;}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;background:var(--surface-2);border-radius:10px;padding:12px;}
+
+/* ledger */
+.ledger-row{display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--border);}
+.ledger-row:first-child{border-top:none;}
+.ledger-main{min-width:0;}
+.ledger-cat{font-size:13.5px;font-weight:600;}
+.ledger-cat .tag{font-weight:500;color:var(--muted);}
+.ledger-meta{font-size:11.5px;color:var(--muted);margin-top:1px;}
+.ledger-val{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:13.5px;text-align:right;white-space:nowrap;}
+.empty-note{font-size:13px;color:var(--muted);padding:10px 0;}
+
+footer{text-align:center;font-size:11px;color:var(--muted);padding-top:4px;}
+
+@media (max-width:560px){
+  .form-grid{grid-template-columns:1fr;}
+  .stats-row{grid-template-columns:1fr;}
+  .edit-grid{grid-template-columns:1fr;}
+  .donut-row{flex-direction:column;align-items:stretch;}
+  .donut-wrap{align-self:center;}
+}
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <section class="card">
+    <h2>Meta de aporte mensal</h2>
+    <p class="hint">Quanto você já investiu neste mês, comparado à sua meta.</p>
+    <div id="goalWrap"></div>
+  </section>
+
+  <section class="card">
+    <h2>Novo lançamento</h2>
+    <p class="hint">Registre uma compra (aporte) em um ativo existente ou cadastre um novo ativo.</p>
+    <form id="entryForm" novalidate>
+      <div class="form-grid">
+        <div class="field span-2">
+          <label for="ativoSelect">Ativo</label>
+          <select id="ativoSelect"></select>
+        </div>
+        <div id="novoAtivoFields" class="field span-2" style="display:contents;">
+          <div class="field">
+            <label for="nomeInput">Nome</label>
+            <input type="text" id="nomeInput" placeholder="Ex.: Bitcoin">
+          </div>
+          <div class="field">
+            <label for="codigoInput">Código</label>
+            <input type="text" id="codigoInput" placeholder="Ex.: BTC">
+          </div>
+          <div class="field">
+            <label for="classeInput">Classe</label>
+            <select id="classeInput"></select>
+          </div>
+          <div class="field">
+            <label for="modoInput">Como acompanhar</label>
+            <select id="modoInput">
+              <option value="cotacao">Por cotação (quantidade × preço)</option>
+              <option value="saldo">Por saldo (valor direto)</option>
+            </select>
+          </div>
+        </div>
+        <div id="cotacaoFields" class="field span-2" style="display:contents;">
+          <div class="field">
+            <label for="quantidadeInput">Quantidade comprada</label>
+            <input type="text" inputmode="decimal" id="quantidadeInput" placeholder="0">
+          </div>
+          <div class="field">
+            <label for="precoInput">Preço pago (por unidade)</label>
+            <input type="text" inputmode="numeric" id="precoInput" placeholder="R$ 0,00" data-cents="0">
+          </div>
+        </div>
+        <div id="saldoFields" class="field span-2" style="display:none;">
+          <label for="valorAporteInput">Valor aportado</label>
+          <input type="text" inputmode="numeric" id="valorAporteInput" placeholder="R$ 0,00" data-cents="0">
+        </div>
+        <div class="field span-2">
+          <label for="dataAporteInput">Data do aporte</label>
+          <input type="date" id="dataAporteInput">
+        </div>
+      </div>
+      <p class="error-msg" id="formError"></p>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">Registrar lançamento</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Aportes por mês</h2>
+    <p class="hint">Linha tracejada marca sua meta de R$ 2.000,00 por mês.</p>
+    <div id="barsWrap"></div>
+  </section>
+
+  <section class="card">
+    <h2>Total investido acumulado</h2>
+    <p class="hint">Soma dos aportes ao longo do tempo.</p>
+    <div id="areaWrap"></div>
+  </section>
+
+  <section class="card">
+    <h2>Rentabilidade</h2>
+    <p class="hint">Calculada a partir do preço médio e da cotação atual de cada ativo. Os números de mês e ano dependem de fechamentos registrados.</p>
+    <div id="rentWrap"></div>
+    <div class="form-actions" style="margin-top:14px;">
+      <button type="button" class="btn-ghost" id="snapshotBtn">Registrar fechamento de hoje</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Carteira por classe</h2>
+    <p class="hint">Distribuição do patrimônio atual entre as classes de ativo.</p>
+    <div class="donut-row">
+      <svg class="donut-wrap" id="donutSvg" viewBox="0 0 220 220"></svg>
+      <div class="class-legend" id="classLegend"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Meus ativos</h2>
+    <p class="hint">Posições atuais, agrupadas por classe.</p>
+    <div id="assetsWrap"></div>
+  </section>
+
+  <section class="card">
+    <h2>Histórico de aportes</h2>
+    <p class="hint">Todos os lançamentos registrados, do mais recente ao mais antigo.</p>
+    <div id="contribWrap"></div>
+  </section>
+
+  <footer>Os dados ficam salvos apenas neste navegador.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var ASSETS_KEY = "invest-ativos-v1";
+  var CONTRIB_KEY = "invest-aportes-v1";
+  var SNAP_KEY = "invest-fechamentos-v1";
+  var GOAL = 2000;
+
+  var CLASSES = ["Renda fixa","Criptomoeda","Bolsa brasileira","Bolsa global","Fundos imobiliários","Comodities"];
+  var CLASS_COLOR_VAR = {
+    "Renda fixa":"var(--c-rf)",
+    "Criptomoeda":"var(--c-cripto)",
+    "Bolsa brasileira":"var(--c-brasil)",
+    "Bolsa global":"var(--c-global)",
+    "Fundos imobiliários":"var(--c-fii)",
+    "Comodities":"var(--c-commod)"
+  };
+  var SEED_ASSETS = [
+    { id:"a1", nome:"Bitcoin", codigo:"BTC", classe:"Criptomoeda", modo:"cotacao", quantidade:0.0318, precoMedio:311156.00, precoAtual:418889.00 },
+    { id:"a2", nome:"DIVO11", codigo:"DIVO11", classe:"Bolsa brasileira", modo:"cotacao", quantidade:14, precoMedio:114.43, precoAtual:146.00 },
+    { id:"a3", nome:"VOO", codigo:"VOO", classe:"Bolsa global", modo:"cotacao", quantidade:1.5, precoMedio:3042.00, precoAtual:3595.38 },
+    { id:"a4", nome:"CDB XP", codigo:"CDB XP", classe:"Renda fixa", modo:"saldo", valorInvestido:5000.00, valorAtual:5000.00 },
+    { id:"a5", nome:"CDB BTG", codigo:"CDB BTG", classe:"Renda fixa", modo:"saldo", valorInvestido:834.00, valorAtual:4811.00 },
+    { id:"a6", nome:"Tesouro Selic", codigo:"SELIC", classe:"Renda fixa", modo:"saldo", valorInvestido:800.00, valorAtual:800.00 },
+    { id:"a7", nome:"Tesouro IPCA+ 2029", codigo:"IPCA+ 2029", classe:"Renda fixa", modo:"saldo", valorInvestido:4950.00, valorAtual:6282.75 },
+    { id:"a8", nome:"Tesouro IPCA+ 2050", codigo:"IPCA+ 2050", classe:"Renda fixa", modo:"saldo", valorInvestido:1200.00, valorAtual:1417.61 }
+  ];
+
+  var state = {
+    assets: [],
+    contributions: [],
+    snapshots: [],
+    editingAssetId: null,
+    confirmingDeleteId: null
+  };
+
+  function pad(n){ return String(n).length < 2 ? "0" + n : String(n); }
+
+  function todayISO(){
+    var d = new Date();
+    return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate());
+  }
+
+  function parseISO(s){
+    var p = s.split("-").map(Number);
+    return { y:p[0], m:p[1]-1, d:p[2] };
+  }
+
+  function monthKeyOf(iso){
+    var p = parseISO(iso);
+    return p.y + "-" + pad(p.m+1);
+  }
+
+  function addMonthsToKey(key, n){
+    var p = key.split("-").map(Number);
+    var total = p[0]*12 + (p[1]-1) + n;
+    var y = Math.floor(total/12);
+    var m = total - y*12;
+    return y + "-" + pad(m+1);
+  }
+
+  function monthLabel(key){
+    var p = key.split("-").map(Number);
+    var dt = new Date(p[0], p[1]-1, 1);
+    var label = new Intl.DateTimeFormat("pt-BR", { month:"short", year:"2-digit" }).format(dt);
+    return label.replace(".", "").replace(/^./, function(c){ return c.toUpperCase(); });
+  }
+
+  function fmtBRL(value){
+    return value.toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
+  }
+
+  function fmtDate(iso){
+    var p = parseISO(iso);
+    return pad(p.d) + "/" + pad(p.m+1) + "/" + p.y;
+  }
+
+  function fmtPercent(v){
+    var sign = v > 0 ? "+" : "";
+    return sign + v.toLocaleString("pt-BR", { minimumFractionDigits:2, maximumFractionDigits:2 }) + "%";
+  }
+
+  function fmtNum(v){
+    return v.toLocaleString("pt-BR", { maximumFractionDigits:8 });
+  }
+
+  // ---- asset math ----
+  function assetValorInvestido(a){ return a.modo === "cotacao" ? a.quantidade * a.precoMedio : a.valorInvestido; }
+  function assetValorAtual(a){ return a.modo === "cotacao" ? a.quantidade * a.precoAtual : a.valorAtual; }
+  function assetResultado(a){ return assetValorAtual(a) - assetValorInvestido(a); }
+  function assetVariacao(a){
+    var vi = assetValorInvestido(a);
+    return vi > 0 ? (assetResultado(a) / vi) * 100 : 0;
+  }
+
+  // ---- persistence ----
+  function load(){
+    try{
+      var raw = localStorage.getItem(ASSETS_KEY);
+      state.assets = raw ? JSON.parse(raw) : SEED_ASSETS.slice();
+    }catch(e){ state.assets = SEED_ASSETS.slice(); }
+    try{
+      var rawC = localStorage.getItem(CONTRIB_KEY);
+      state.contributions = rawC ? JSON.parse(rawC) : [];
+    }catch(e){ state.contributions = []; }
+    try{
+      var rawS = localStorage.getItem(SNAP_KEY);
+      state.snapshots = rawS ? JSON.parse(rawS) : [];
+      if(state.snapshots.length === 0){
+        var total = 0;
+        state.assets.forEach(function(a){ total += assetValorAtual(a); });
+        state.snapshots = [{ id:"s0", data: todayISO(), total: total }];
+        saveSnapshots();
+      }
+    }catch(e){ state.snapshots = []; }
+  }
+
+  function saveAssets(){ try{ localStorage.setItem(ASSETS_KEY, JSON.stringify(state.assets)); }catch(e){} }
+  function saveContrib(){ try{ localStorage.setItem(CONTRIB_KEY, JSON.stringify(state.contributions)); }catch(e){} }
+  function saveSnapshots(){ try{ localStorage.setItem(SNAP_KEY, JSON.stringify(state.snapshots)); }catch(e){} }
+
+  // ---- totals ----
+  function totalInvestido(){
+    var t = 0; state.assets.forEach(function(a){ t += assetValorInvestido(a); }); return t;
+  }
+  function totalAtual(){
+    var t = 0; state.assets.forEach(function(a){ t += assetValorAtual(a); }); return t;
+  }
+
+  // ---- rendering: hero stats ----
+  function renderStats(){
+    var vi = totalInvestido();
+    var va = totalAtual();
+    var resultado = va - vi;
+    var variacao = vi > 0 ? (resultado / vi) * 100 : 0;
+    var wrap = document.getElementById("statsRow");
+    wrap.innerHTML =
+      '<div class="stat-card"><p class="eyebrow">Patrimônio atual</p><div class="value">' + fmtBRL(va) + '</div><p class="sub">Investido: ' + fmtBRL(vi) + '</p></div>' +
+      '<div class="stat-card"><p class="eyebrow">Resultado acumulado</p><div class="value">' + fmtBRL(resultado) + '</div><p class="sub ' + (variacao >= 0 ? "pos" : "neg") + '">' + fmtPercent(variacao) + ' desde o início</p></div>' +
+      '<div class="stat-card"><p class="eyebrow">Ativos na carteira</p><div class="value">' + state.assets.length + '</div><p class="sub">em ' + CLASSES.filter(function(c){ return state.assets.some(function(a){ return a.classe === c; }); }).length + ' classes</p></div>';
+  }
+
+  // ---- rendering: meta mensal ----
+  function renderGoal(){
+    var currentKey = monthKeyOf(todayISO());
+    var total = 0;
+    state.contributions.forEach(function(c){ if(monthKeyOf(c.data) === currentKey) total += c.valor; });
+    var pct = Math.min(100, (total / GOAL) * 100);
+    var met = total >= GOAL;
+    var wrap = document.getElementById("goalWrap");
+    wrap.innerHTML =
+      '<div class="goal-head"><span class="amt">' + fmtBRL(total) + '</span><span class="target">meta: ' + fmtBRL(GOAL) + '</span></div>' +
+      '<div class="goal-track"><div class="goal-fill ' + (met ? "met" : "") + '" style="width:' + pct + '%"></div></div>' +
+      '<p class="goal-note">' + (met ?
+        "Meta de " + monthLabel(currentKey) + " batida! Você aportou " + fmtPercent((total/GOAL)*100 - 100).replace("+","+") + " a mais que o previsto." :
+        "Faltam " + fmtBRL(GOAL - total) + " para bater a meta de " + monthLabel(currentKey) + ".") + '</p>';
+  }
+
+  // ---- rendering: bar chart (aportes por mes) ----
+  function monthRange(){
+    var currentKey = monthKeyOf(todayISO());
+    if(state.contributions.length === 0) return [currentKey];
+    var keys = state.contributions.map(function(c){ return monthKeyOf(c.data); });
+    var minKey = keys.reduce(function(a,b){ return b < a ? b : a; }, currentKey);
+    var out = [];
+    var k = minKey;
+    var guard = 0;
+    while(k <= currentKey && guard < 240){
+      out.push(k);
+      k = addMonthsToKey(k, 1);
+      guard++;
+    }
+    return out;
+  }
+
+  function renderBars(){
+    var wrap = document.getElementById("barsWrap");
+    if(state.contributions.length === 0){
+      wrap.innerHTML = '<p class="chart-empty">Registre seu primeiro aporte para ver este gráfico.</p>';
+      return;
+    }
+    var keys = monthRange();
+    var totals = keys.map(function(k){
+      var t = 0;
+      state.contributions.forEach(function(c){ if(monthKeyOf(c.data) === k) t += c.valor; });
+      return t;
+    });
+    var maxVal = Math.max(GOAL, totals.reduce(function(a,b){ return Math.max(a,b); }, 0)) * 1.15;
+    var w = 640, h = 220, padL = 10, padR = 10, padT = 16, padB = 26;
+    var plotW = w - padL - padR, plotH = h - padT - padB;
+    var n = keys.length;
+    var gap = 10;
+    var barW = Math.max(6, (plotW - gap*(n-1)) / n);
+    var goalY = padT + plotH - (GOAL/maxVal)*plotH;
+
+    var bars = "";
+    keys.forEach(function(k, i){
+      var val = totals[i];
+      var bh = (val/maxVal)*plotH;
+      var x = padL + i*(barW+gap);
+      var y = padT + plotH - bh;
+      var color = val >= GOAL ? "var(--good)" : "var(--accent)";
+      bars += '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + Math.max(bh,1) + '" rx="3" fill="' + color + '"></rect>';
+      if(n <= 14){
+        bars += '<text x="' + (x+barW/2) + '" y="' + (h-8) + '" text-anchor="middle" font-size="10" fill="var(--muted)">' + monthLabel(k) + '</text>';
+      }
+    });
+
+    var svg =
+      '<svg class="bars-svg" viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">' +
+        '<line x1="' + padL + '" y1="' + goalY + '" x2="' + (w-padR) + '" y2="' + goalY + '" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"></line>' +
+        bars +
+      '</svg>';
+    wrap.innerHTML = svg;
+  }
+
+  // ---- rendering: area chart (acumulado) ----
+  function renderArea(){
+    var wrap = document.getElementById("areaWrap");
+    if(state.contributions.length === 0){
+      wrap.innerHTML = '<p class="chart-empty">Registre seu primeiro aporte para ver este gráfico.</p>';
+      return;
+    }
+    var keys = monthRange();
+    var cum = 0;
+    var points = keys.map(function(k){
+      state.contributions.forEach(function(c){ if(monthKeyOf(c.data) === k) cum += c.valor; });
+      return cum;
+    });
+    var maxVal = Math.max.apply(null, points) * 1.1 || 1;
+    var w = 640, h = 200, padL = 10, padR = 10, padT = 16, padB = 22;
+    var plotW = w - padL - padR, plotH = h - padT - padB;
+    var n = points.length;
+    var stepX = n > 1 ? plotW/(n-1) : 0;
+
+    var coords = points.map(function(v,i){
+      var x = padL + i*stepX;
+      var y = padT + plotH - (v/maxVal)*plotH;
+      return [x,y];
+    });
+    var linePath = coords.map(function(p,i){ return (i===0?"M":"L") + p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
+    var areaPath = linePath + " L" + coords[coords.length-1][0].toFixed(1) + "," + (padT+plotH) + " L" + coords[0][0].toFixed(1) + "," + (padT+plotH) + " Z";
+
+    var lastLabel = fmtBRL(points[points.length-1]);
+    var svg =
+      '<svg class="area-svg" viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">' +
+        '<path d="' + areaPath + '" fill="var(--accent-soft)"></path>' +
+        '<path d="' + linePath + '" fill="none" stroke="var(--accent)" stroke-width="2.5"></path>' +
+        '<circle cx="' + coords[coords.length-1][0] + '" cy="' + coords[coords.length-1][1] + '" r="4" fill="var(--accent)"></circle>' +
+        '<text x="' + Math.max(0,coords[coords.length-1][0]-6) + '" y="' + Math.max(12,coords[coords.length-1][1]-10) + '" text-anchor="end" font-size="12" font-weight="600" fill="var(--ink)">' + lastLabel + '</text>' +
+      '</svg>';
+    wrap.innerHTML = svg;
+  }
+
+  // ---- rendering: rentabilidade ----
+  function snapshotBefore(key){
+    var before = state.snapshots.filter(function(s){ return monthKeyOf(s.data) < key; });
+    if(before.length === 0) return null;
+    before.sort(function(a,b){ return b.data.localeCompare(a.data); });
+    return before[0];
+  }
+  function latestSnapshot(){
+    if(state.snapshots.length === 0) return null;
+    var sorted = state.snapshots.slice().sort(function(a,b){ return b.data.localeCompare(a.data); });
+    return sorted[0];
+  }
+
+  function renderRent(){
+    var vi = totalInvestido(), va = totalAtual();
+    var inceptionPct = vi > 0 ? ((va-vi)/vi)*100 : 0;
+
+    var currentKey = monthKeyOf(todayISO());
+    var monthStart = snapshotBefore(currentKey);
+    var monthAportes = 0;
+    state.contributions.forEach(function(c){ if(monthKeyOf(c.data) === currentKey) monthAportes += c.valor; });
+    var monthHtml;
+    if(monthStart){
+      var monthPct = monthStart.total > 0 ? ((va - monthStart.total - monthAportes) / monthStart.total) * 100 : 0;
+      monthHtml = '<div class="stat-card"><p class="eyebrow">Este mês</p><div class="value">' + fmtPercent(monthPct) + '</div><p class="sub">vs. fechamento de ' + fmtDate(monthStart.data) + '</p></div>';
+    } else {
+      monthHtml = '<div class="stat-card"><p class="eyebrow">Este mês</p><div class="value">—</div><p class="sub">registre um fechamento no mês passado</p></div>';
+    }
+
+    var yearKey = todayISO().slice(0,4) + "-01";
+    var yearStart = snapshotBefore(yearKey);
+    var yearAportes = 0;
+    var yearPrefix = todayISO().slice(0,4);
+    state.contributions.forEach(function(c){ if(c.data.slice(0,4) === yearPrefix) yearAportes += c.valor; });
+    var yearHtml;
+    if(yearStart){
+      var yearPct = yearStart.total > 0 ? ((va - yearStart.total - yearAportes) / yearStart.total) * 100 : 0;
+      yearHtml = '<div class="stat-card"><p class="eyebrow">Acumulado no ano</p><div class="value">' + fmtPercent(yearPct) + '</div><p class="sub">vs. fechamento de ' + fmtDate(yearStart.data) + '</p></div>';
+    } else {
+      yearHtml = '<div class="stat-card"><p class="eyebrow">Acumulado no ano</p><div class="value">—</div><p class="sub">ainda sem fechamento anterior a este ano</p></div>';
+    }
+
+    var inceptionHtml = '<div class="stat-card"><p class="eyebrow">Desde o início</p><div class="value">' + fmtPercent(inceptionPct) + '</div><p class="sub">' + fmtBRL(va-vi) + '</p></div>';
+
+    document.getElementById("rentWrap").innerHTML = '<div class="stats-row">' + inceptionHtml + monthHtml + yearHtml + '</div>';
+  }
+
+  // ---- rendering: donut + legend ----
+  function renderDonut(){
+    var va = totalAtual();
+    var byClass = {};
+    CLASSES.forEach(function(c){ byClass[c] = 0; });
+    state.assets.forEach(function(a){ byClass[a.classe] += assetValorAtual(a); });
+
+    var svg = document.getElementById("donutSvg");
+    var r = 80, cx = 110, cy = 110, sw = 26;
+    var circumference = 2*Math.PI*r;
+    var offset = 0;
+    var gap = va > 0 ? 3 : 0;
+    var segs = "";
+    CLASSES.forEach(function(c){
+      var val = byClass[c];
+      if(val <= 0) return;
+      var pct = val/va;
+      var dash = Math.max(pct*circumference - gap, 0);
+      segs += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + CLASS_COLOR_VAR[c] + '" stroke-width="' + sw + '" stroke-dasharray="' + dash + ' ' + (circumference-dash) + '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')"></circle>';
+      offset += pct*circumference;
+    });
+    var centerLabel = va > 0 ?
+      '<text x="' + cx + '" y="' + (cy-4) + '" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="Public Sans, sans-serif">Patrimônio</text><text x="' + cx + '" y="' + (cy+14) + '" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)" font-family="IBM Plex Mono, monospace">' + fmtBRL(va).replace("R$","R$ ") + '</text>' :
+      '<text x="' + cx + '" y="' + cy + '" text-anchor="middle" font-size="12" fill="var(--muted)">Sem ativos</text>';
+    var bg = va > 0 ? '' : '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--surface-2)" stroke-width="' + sw + '"></circle>';
+    svg.innerHTML = bg + segs + centerLabel;
+
+    var legend = document.getElementById("classLegend");
+    legend.innerHTML = CLASSES.map(function(c){
+      var val = byClass[c];
+      var pct = va > 0 ? (val/va)*100 : 0;
+      return '<div class="class-row"><span class="dot" style="background:' + CLASS_COLOR_VAR[c] + '"></span><span class="name">' + c + '</span><span class="nums">' + fmtBRL(val) + ' · ' + pct.toFixed(1) + '%</span></div>';
+    }).join("");
+  }
+
+  // ---- rendering: assets list ----
+  function populateClasseSelect(sel){
+    sel.innerHTML = CLASSES.map(function(c){ return '<option value="' + c + '">' + c + '</option>'; }).join("");
+  }
+
+  function assetFieldsHtml(a, prefix){
+    if(a.modo === "cotacao"){
+      return (
+        '<div class="field"><label>Quantidade</label><input type="text" inputmode="decimal" id="' + prefix + 'qtd" value="' + a.quantidade + '"></div>' +
+        '<div class="field"><label>Preço médio</label><input type="text" inputmode="decimal" id="' + prefix + 'pm" value="' + a.precoMedio + '"></div>' +
+        '<div class="field"><label>Preço atual</label><input type="text" inputmode="decimal" id="' + prefix + 'pa" value="' + a.precoAtual + '"></div>'
+      );
+    }
+    return (
+      '<div class="field"><label>Valor investido</label><input type="text" inputmode="decimal" id="' + prefix + 'vi" value="' + a.valorInvestido + '"></div>' +
+      '<div class="field"><label>Valor atual</label><input type="text" inputmode="decimal" id="' + prefix + 'va" value="' + a.valorAtual + '"></div>'
+    );
+  }
+
+  function renderAssets(){
+    var wrap = document.getElementById("assetsWrap");
+    if(state.assets.length === 0){
+      wrap.innerHTML = '<p class="empty-note">Nenhum ativo cadastrado ainda.</p>';
+      return;
+    }
+    var html = "";
+    CLASSES.forEach(function(classe){
+      var assets = state.assets.filter(function(a){ return a.classe === classe; });
+      if(assets.length === 0) return;
+      html += '<div class="class-group"><div class="class-group-title"><span class="dot" style="background:' + CLASS_COLOR_VAR[classe] + '"></span>' + classe + '</div>';
+      assets.forEach(function(a){
+        var vi = assetValorInvestido(a), va = assetValorAtual(a), res = va-vi, pct = assetVariacao(a);
+        var meta = a.modo === "cotacao" ?
+          (fmtNum(a.quantidade) + ' un · PM ' + fmtBRL(a.precoMedio) + ' · atual ' + fmtBRL(a.precoAtual)) :
+          ('investido ' + fmtBRL(vi));
+        html += '<div class="asset-row" data-id="' + a.id + '">' +
+          '<div class="asset-top">' +
+            '<div class="asset-main"><div class="asset-name">' + a.nome + (a.codigo ? ' <span class="asset-code">· ' + a.codigo + '</span>' : '') + '</div>' +
+            '<div class="asset-meta">' + meta + '</div></div>' +
+            '<div class="asset-vals"><div class="atual">' + fmtBRL(va) + '</div><div class="result ' + (res>=0?"pos":"neg") + '">' + fmtBRL(res) + ' · ' + fmtPercent(pct) + '</div></div>' +
+          '</div>';
+        if(state.editingAssetId === a.id){
+          html += '<div class="edit-grid">' +
+            '<div class="field"><label>Nome</label><input type="text" id="edit-nome" value="' + a.nome + '"></div>' +
+            '<div class="field"><label>Código</label><input type="text" id="edit-codigo" value="' + (a.codigo||'') + '"></div>' +
+            '<div class="field span-2"><label>Classe</label><select id="edit-classe"></select></div>' +
+            assetFieldsHtml(a, "edit-") +
+            '</div>' +
+            '<div class="form-actions"><button type="button" class="btn-ghost" data-cancel-edit="1">Cancelar</button><button type="button" class="btn-primary" data-save-edit="1">Salvar</button></div>';
+        } else if(state.confirmingDeleteId === a.id){
+          html += '<div class="confirm-row">Remover ' + a.nome + ' da carteira? <button type="button" class="btn-danger" data-confirm-delete="1">Confirmar</button><button type="button" class="btn-ghost" data-cancel-delete="1">Cancelar</button></div>';
+        } else {
+          html += '<div class="asset-actions"><button type="button" class="btn-text" data-edit="1">Editar</button><button type="button" class="btn-danger-text" data-delete="1">Dar baixa</button></div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+    wrap.innerHTML = html;
+
+    var editSel = wrap.querySelector("#edit-classe");
+    if(editSel){
+      populateClasseSelect(editSel);
+      var editingAsset = state.assets.filter(function(a){ return a.id === state.editingAssetId; })[0];
+      if(editingAsset) editSel.value = editingAsset.classe;
+    }
+
+    wrap.querySelectorAll("[data-edit]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.editingAssetId = btn.closest(".asset-row").dataset.id;
+        state.confirmingDeleteId = null;
+        renderAssets();
+      });
+    });
+    wrap.querySelectorAll("[data-cancel-edit]").forEach(function(btn){
+      btn.addEventListener("click", function(){ state.editingAssetId = null; renderAssets(); });
+    });
+    wrap.querySelectorAll("[data-save-edit]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.closest(".asset-row").dataset.id;
+        var a = state.assets.filter(function(x){ return x.id === id; })[0];
+        if(!a) return;
+        a.nome = document.getElementById("edit-nome").value.trim() || a.nome;
+        a.codigo = document.getElementById("edit-codigo").value.trim();
+        a.classe = document.getElementById("edit-classe").value;
+        if(a.modo === "cotacao"){
+          a.quantidade = parseFloat((document.getElementById("edit-qtd").value || "0").replace(",", ".")) || 0;
+          a.precoMedio = parseFloat((document.getElementById("edit-pm").value || "0").replace(",", ".")) || 0;
+          a.precoAtual = parseFloat((document.getElementById("edit-pa").value || "0").replace(",", ".")) || 0;
+        } else {
+          a.valorInvestido = parseFloat((document.getElementById("edit-vi").value || "0").replace(",", ".")) || 0;
+          a.valorAtual = parseFloat((document.getElementById("edit-va").value || "0").replace(",", ".")) || 0;
+        }
+        state.editingAssetId = null;
+        saveAssets();
+        renderAll();
+      });
+    });
+    wrap.querySelectorAll("[data-delete]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.confirmingDeleteId = btn.closest(".asset-row").dataset.id;
+        state.editingAssetId = null;
+        renderAssets();
+      });
+    });
+    wrap.querySelectorAll("[data-cancel-delete]").forEach(function(btn){
+      btn.addEventListener("click", function(){ state.confirmingDeleteId = null; renderAssets(); });
+    });
+    wrap.querySelectorAll("[data-confirm-delete]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.closest(".asset-row").dataset.id;
+        state.assets = state.assets.filter(function(a){ return a.id !== id; });
+        state.confirmingDeleteId = null;
+        saveAssets();
+        renderAll();
+      });
+    });
+  }
+
+  // ---- rendering: contributions ledger ----
+  function renderContrib(){
+    var wrap = document.getElementById("contribWrap");
+    if(state.contributions.length === 0){
+      wrap.innerHTML = '<p class="empty-note">Nenhum aporte registrado ainda.</p>';
+      return;
+    }
+    var sorted = state.contributions.slice().sort(function(a,b){ return b.data.localeCompare(a.data); });
+    wrap.innerHTML = sorted.map(function(c){
+      var color = CLASS_COLOR_VAR[c.classe] || "var(--muted)";
+      return '<div class="ledger-row">' +
+        '<div class="ledger-main"><div class="ledger-cat"><span class="dot" style="display:inline-block;background:' + color + ';width:8px;height:8px;border-radius:2px;margin-right:6px;"></span>' + c.nomeAtivo + ' <span class="tag">· ' + c.classe + '</span></div>' +
+        '<div class="ledger-meta">' + fmtDate(c.data) + '</div></div>' +
+        '<div class="ledger-val">' + fmtBRL(c.valor) + '</div>' +
+        '<button type="button" class="btn-danger-text" data-del-contrib="' + c.id + '">Excluir</button>' +
+      '</div>';
+    }).join("");
+    wrap.querySelectorAll("[data-del-contrib]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.getAttribute("data-del-contrib");
+        state.contributions = state.contributions.filter(function(c){ return c.id !== id; });
+        saveContrib();
+        renderAll();
+      });
+    });
+  }
+
+  // ---- form ----
+  function populateAtivoSelect(){
+    var sel = document.getElementById("ativoSelect");
+    var current = sel.value;
+    sel.innerHTML = '<option value="__new__">+ Novo ativo</option>' +
+      state.assets.map(function(a){ return '<option value="' + a.id + '">' + a.nome + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join("");
+    if(current && sel.querySelector('option[value="' + current + '"]')) sel.value = current;
+  }
+
+  function updateFormFieldsVisibility(){
+    var sel = document.getElementById("ativoSelect");
+    var isNew = sel.value === "__new__";
+    document.getElementById("novoAtivoFields").style.display = isNew ? "contents" : "none";
+    var modo;
+    if(isNew){
+      modo = document.getElementById("modoInput").value;
+    } else {
+      var a = state.assets.filter(function(x){ return x.id === sel.value; })[0];
+      modo = a ? a.modo : "cotacao";
+    }
+    document.getElementById("cotacaoFields").style.display = modo === "cotacao" ? "contents" : "none";
+    document.getElementById("saldoFields").style.display = modo === "saldo" ? "flex" : "none";
+  }
+
+  function maskCurrencyInput(input){
+    input.addEventListener("input", function(){
+      var digits = input.value.replace(/\D/g, "");
+      var cents = digits ? parseInt(digits, 10) : 0;
+      input.dataset.cents = String(cents);
+      input.value = cents === 0 ? "" : fmtBRL(cents/100);
+    });
+  }
+
+  function setupForm(){
+    var ativoSel = document.getElementById("ativoSelect");
+    var modoSel = document.getElementById("modoInput");
+    var classeSel = document.getElementById("classeInput");
+    var dataInput = document.getElementById("dataAporteInput");
+    var form = document.getElementById("entryForm");
+    var errorMsg = document.getElementById("formError");
+
+    populateClasseSelect(classeSel);
+    dataInput.value = todayISO();
+    maskCurrencyInput(document.getElementById("precoInput"));
+    maskCurrencyInput(document.getElementById("valorAporteInput"));
+
+    ativoSel.addEventListener("change", updateFormFieldsVisibility);
+    modoSel.addEventListener("change", updateFormFieldsVisibility);
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var isNew = ativoSel.value === "__new__";
+      var data = dataInput.value;
+      if(!data){ errorMsg.textContent = "Informe a data do aporte."; return; }
+
+      var asset, modo;
+      if(isNew){
+        var nome = document.getElementById("nomeInput").value.trim();
+        if(!nome){ errorMsg.textContent = "Informe o nome do ativo."; return; }
+        modo = modoSel.value;
+      } else {
+        asset = state.assets.filter(function(a){ return a.id === ativoSel.value; })[0];
+        if(!asset){ errorMsg.textContent = "Selecione um ativo válido."; return; }
+        modo = asset.modo;
+      }
+
+      var aporteValor = 0;
+      var qtd = 0, preco = 0;
+      if(modo === "cotacao"){
+        qtd = parseFloat(document.getElementById("quantidadeInput").value.replace(",", ".")) || 0;
+        preco = parseInt(document.getElementById("precoInput").dataset.cents || "0", 10) / 100;
+        if(qtd <= 0){ errorMsg.textContent = "Informe a quantidade comprada."; return; }
+        if(preco <= 0){ errorMsg.textContent = "Informe o preço pago."; return; }
+        aporteValor = qtd * preco;
+      } else {
+        aporteValor = parseInt(document.getElementById("valorAporteInput").dataset.cents || "0", 10) / 100;
+        if(aporteValor <= 0){ errorMsg.textContent = "Informe o valor aportado."; return; }
+      }
+      errorMsg.textContent = "";
+
+      if(isNew){
+        asset = {
+          id: "a-" + Date.now() + "-" + Math.random().toString(36).slice(2,7),
+          nome: document.getElementById("nomeInput").value.trim(),
+          codigo: document.getElementById("codigoInput").value.trim(),
+          classe: classeSel.value,
+          modo: modo
+        };
+        if(modo === "cotacao"){
+          asset.quantidade = qtd; asset.precoMedio = preco; asset.precoAtual = preco;
+        } else {
+          asset.valorInvestido = aporteValor; asset.valorAtual = aporteValor;
+        }
+        state.assets.push(asset);
+      } else {
+        if(modo === "cotacao"){
+          var newQty = asset.quantidade + qtd;
+          asset.precoMedio = (asset.quantidade*asset.precoMedio + qtd*preco) / newQty;
+          asset.quantidade = newQty;
+          asset.precoAtual = preco;
+        } else {
+          asset.valorInvestido += aporteValor;
+          asset.valorAtual += aporteValor;
+        }
+      }
+
+      state.contributions.push({
+        id: "c-" + Date.now() + "-" + Math.random().toString(36).slice(2,7),
+        data: data,
+        valor: aporteValor,
+        ativoId: asset.id,
+        classe: asset.classe,
+        nomeAtivo: asset.nome
+      });
+
+      saveAssets();
+      saveContrib();
+
+      document.getElementById("nomeInput").value = "";
+      document.getElementById("codigoInput").value = "";
+      document.getElementById("quantidadeInput").value = "";
+      document.getElementById("precoInput").value = ""; document.getElementById("precoInput").dataset.cents = "0";
+      document.getElementById("valorAporteInput").value = ""; document.getElementById("valorAporteInput").dataset.cents = "0";
+      dataInput.value = todayISO();
+
+      renderAll();
+    });
+
+    document.getElementById("snapshotBtn").addEventListener("click", function(){
+      var today = todayISO();
+      var existing = state.snapshots.filter(function(s){ return s.data === today; })[0];
+      var total = totalAtual();
+      if(existing){ existing.total = total; }
+      else { state.snapshots.push({ id:"s-"+Date.now(), data: today, total: total }); }
+      saveSnapshots();
+      renderAll();
+    });
+  }
+
+  function renderAll(){
+    renderStats();
+    renderGoal();
+    renderBars();
+    renderArea();
+    renderRent();
+    renderDonut();
+    renderAssets();
+    renderContrib();
+    populateAtivoSelect();
+    updateFormFieldsVisibility();
+  }
+
+  load();
+  setupForm();
+  populateAtivoSelect();
+  updateFormFieldsVisibility();
+  renderAll();
+})();
+</script>
+</body>
+</html>
